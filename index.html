@@ -63,8 +63,8 @@ const OUTREACH_NOTE = 'Paste into Claude Code in the venta-office folder, with C
 const MARKETING_NOTE = 'Paste into Claude Code in the venta-office folder. Plain /maria writes fresh group posts for Sergio; add anything else you want after it. Drafts only; María never posts.';
 const MODES = {
   venta: { sub:'Venta office · nonprofit AI program', agents: [
-    { who:'Jefe', name:'Chief of Staff', live:true, cmds:['/jefe'], note:'Paste this into Claude Code in the venta-office folder. Drafts only; nothing is sent.',
-      role:'Morning brief, pipeline tidiness and follow-ups. Reads the pipeline sheet, calendar and Gmail, and tells you what matters today.' },
+    { who:'Jefe', name:'Chief of Staff', live:true, cmds:['/jefe'], note:'Paste into Claude Code in the venta-office folder. Plain /jefe is the morning brief. Or give him orders for the team: /jefe tell María to write group posts, have Sergio run Facebook and Olga update the dashboard.',
+      role:'Your boss of the office: morning brief, plus he hands out work to María, Sergio and Olga in one go. Reads the pipeline sheet, calendar and Gmail. Reads the pipeline sheet, calendar and Gmail, and tells you what matters today.' },
     { who:'Sergio', name:'Sales', live:true, cmds:['/sergio venta'], note:OUTREACH_NOTE,
       role:'Finds local nonprofit leaders in Williamson County on LinkedIn, drafts connection notes, messages and replies, and offers the free 20-minute AI check.' },
     { who:'Olga', name:'Operations', live:true, cmds:['/olga'], note:'Paste into Claude Code in the venta-office folder. Best after each Sergio run or on Fridays. Your private dashboard link is in her summary.',
