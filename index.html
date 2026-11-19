@@ -60,20 +60,23 @@
 // Two offices in one. Each mode's agents map to the four department rooms, in order.
 // Agent list mirrors CLAUDE.md. When an agent goes live, set live:true and add its commands.
 const OUTREACH_NOTE = 'Paste into Claude Code in the venta-office folder, with Chrome open and signed in. It drafts everything, then waits for you to reply "send all".';
+const MARKETING_NOTE = 'Paste into Claude Code in the venta-office folder and change the request to what you need. Drafts only; María never posts.';
 const MODES = {
   venta: { sub:'Venta office · nonprofit AI program', agents: [
-    { name:'Chief of Staff', live:true, cmds:['/brief'], note:'Paste this into Claude Code in the venta-office folder. Drafts only; nothing is sent.',
+    { who:'Jefe', name:'Chief of Staff', live:true, cmds:['/brief'], note:'Paste this into Claude Code in the venta-office folder. Drafts only; nothing is sent.',
       role:'Morning brief, pipeline tidiness and follow-ups. Reads the pipeline sheet, calendar and Gmail, and tells you what matters today.' },
-    { name:'Outreach', live:true, cmds:['/outreach venta linkedin'], note:OUTREACH_NOTE,
+    { who:'Sergio', name:'Sales', live:true, cmds:['/outreach venta linkedin'], note:OUTREACH_NOTE,
       role:'Finds local nonprofit leaders in Williamson County on LinkedIn, drafts connection notes, messages and replies, and offers the free 20-minute AI check.' },
-    { name:'Operations', live:false, role:'Proposals, agreements and client delivery documents.' },
-    { name:'Marketing', live:false, role:'Video studio, LinkedIn posts and website fixes.' } ] },
+    { who:'Olga', name:'Operations', live:false, role:'Discovery call prep, proposals, agreements and client delivery documents.' },
+    { who:'María', name:'Marketing', live:true, cmds:['/marketing venta 3 LinkedIn posts for next week'], note:MARKETING_NOTE,
+      role:'LinkedIn posts for local nonprofit leaders, talk outlines and brand checks, using your Venta Google Drive folder.' } ] },
   rts: { sub:'RTS office · referral partners', agents: [
-    { name:'Chief of Staff', live:false, role:'Not set up for RTS yet.' },
-    { name:'Partner Outreach', live:true, cmds:['/outreach rts facebook', '/outreach rts linkedin', '/outreach rts youtube', '/outreach rts tiktok'], note:OUTREACH_NOTE + ' One platform per run.',
+    { who:'Jefe', name:'Chief of Staff', live:false, role:'Not set up for RTS yet.' },
+    { who:'Sergio', name:'Partner Outreach', live:true, cmds:['/outreach rts facebook', '/outreach rts linkedin', '/outreach rts youtube', '/outreach rts tiktok'], note:OUTREACH_NOTE + ' One platform per run.',
       role:'Finds referral partners (dispatchers, trucking insurance agents, compliance services and more), answers messages and comments, follows up, and drafts group posts in English and Spanish.' },
-    { name:'Operations', live:false, role:'Not set up for RTS yet.' },
-    { name:'Marketing', live:false, role:'Not set up for RTS yet.' } ] },
+    { who:'Olga', name:'Operations', live:false, role:'Not set up for RTS yet.' },
+    { who:'María', name:'Marketing', live:true, cmds:['/marketing rts 5 group posts for dispatchers, 2 in Spanish', '/marketing rts video script for TikTok'], note:MARKETING_NOTE,
+      role:'Group posts for Sergio, flyer copy and short video scripts in English and Spanish, using your RTS Financial — Marketing Drive folder.' } ] },
 };
 let mode = 'venta', AGENTS = MODES.venta.agents;
 try { mode = location.hash === '#rts' ? 'rts' : location.hash === '#venta' ? 'venta' : localStorage.getItem('mode') || 'venta'; } catch {}
@@ -86,7 +89,7 @@ function select(i, fly = true) {
   const a = AGENTS[i];
   [...tabs.children].forEach((b, j) => b.setAttribute('aria-pressed', j === i));
   card.innerHTML = `<div class="tag ${a.live ? '' : 'later'}">${a.live ? 'Live' : 'Coming soon'}</div>
-    <h2>${a.name}</h2><p>${a.role}</p>` + (a.live
+    <h2>${a.who} · ${a.name}</h2><p>${a.role}</p>` + (a.live
     ? a.cmds.map(c => `<div class="cmd"><code>${c}</code><button>Copy</button></div>`).join('') + `<p><small>${a.note}</small></p>`
     : `<p><small>This agent isn't set up yet.</small></p>`);
   card.querySelectorAll('.cmd button').forEach(b => b.onclick = () =>
@@ -101,7 +104,7 @@ function setMode(m) {
   tabs.innerHTML = '';
   AGENTS.forEach((a, i) => {
     const b = document.createElement('button');
-    b.textContent = a.name; if (!a.live) b.className = 'later';
+    b.innerHTML = `${a.who}<br><small>${a.name}</small>`; if (!a.live) b.className = 'later';
     b.onclick = () => select(i); tabs.append(b);
   });
   relabel3D();
@@ -322,7 +325,7 @@ bookshelf(cos, -W + .25, nz - .5, Math.PI / 2); bookshelf(cos, -W + .25, nz + 1,
 sofa(cos, -2 * RX + 2.6, nz + 1.7, -Math.PI / 2, .95, '#EADFD1');
 plant(cos, -W + .6, -D + .6); plant(cos, -RX - .5, -D + .6, .8);
 // Sales
-stations[1] = station(sales, -.8, nz + .6, { skin:'#e0b896', hair:'#6b3e1f', hairStyle:'long', top:'#3f6f8f', pants:'#cbbfa8' });
+stations[1] = station(sales, -.8, nz + .6, { skin:'#e0b896', hair:'#6b3e1f', top:'#3f6f8f', pants:'#cbbfa8' });
 const wb = G(sales, RX - .1, nz - .4, -Math.PI / 2);
 B(wb, 1.8, 1.0, .03, '#fafafa', 0, 1.5, 0); B(wb, 1.84, .04, .08, METAL, 0, .99, .02);
 [['#F26B21', .5, 1.75], ['#13284E', .9, 1.55], ['#13284E', .6, 1.4], ['#F58A4B', 1.1, 1.25]].forEach(([c, w, y]) => B(wb, w, .03, .01, c, -.8 + w / 2, y, .02));
@@ -334,7 +337,7 @@ for (let i = 0; i < 3; i++) { const c = G(ops, W - .4, nz - 1.8 + i * .5, -Math.
 bookshelf(ops, W - .25, nz + 1.4, -Math.PI / 2);
 plant(ops, RX + .6, -D + .6); plant(ops, W - .6, -CZ - .7, .8);
 // Marketing (video studio)
-stations[3] = station(mkt, -W + 2.3, sz - .6, { skin:'#f1cfb1', hair:'#d9b26a', top:'#6b8f5e', pants:'#3a3f4b' });
+stations[3] = station(mkt, -W + 2.3, sz - .6, { skin:'#f1cfb1', hair:'#d9b26a', hairStyle:'long', top:'#6b8f5e', pants:'#3a3f4b' });
 const bd = G(mkt, -RX - 2, D - .5); B(bd, 2.4, 2.2, .04, '#13284E', 0, 1.2, 0); for (const s of [-1, 1]) B(bd, .04, 2.4, .04, METAL, s * 1.22, 1.2, 0);
 C(mkt, .17, .17, .04, OAK, -RX - 2, .66, D - 1.4); C(mkt, .02, .02, .64, METAL, -RX - 2, .32, D - 1.4);
 const tp = G(mkt, -RX - 2, sz - .6, Math.PI);
@@ -387,9 +390,9 @@ show3D = (i, go) => {
 relabel3D = () => ROOMS.forEach(r => {
   if (r.agent === undefined) return;
   const a = AGENTS[r.agent], s = stations[r.agent];
-  const st = !a.live ? 'Coming soon' : a.cmds.length > 1 ? `Live · ${a.cmds.length} platforms` : 'Live · ' + a.cmds[0];
+  const st = a.name + (a.live ? ' · Live' : ' · Coming soon');
   if (r.sprite.material.map !== screenOff) r.sprite.material.map.dispose();
-  r.sprite.material.map = labelTex(a.name, st, a.live);
+  r.sprite.material.map = labelTex(a.who, st, a.live);
   s.screen.material.map = a.live ? screenOn : screenOff; s.live = a.live;
 });
 relabel3D(); show3D(AGENTS.findIndex(a => a.live), false);
