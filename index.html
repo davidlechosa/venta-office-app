@@ -13,6 +13,12 @@
   header { background:var(--navy); color:#fff; padding:14px 16px; border-bottom:4px solid var(--orange); }
   header b { letter-spacing:.12em; } header span { color:var(--orange-l); letter-spacing:.12em; font-weight:600; }
   header p { margin:4px 0 0; font-size:13px; color:#d9dee8; }
+  .top { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .switch { display:flex; }
+  .switch button { font:600 13px Inter, sans-serif; background:transparent; color:#fff; border:1px solid rgba(255,255,255,.45); padding:6px 14px; cursor:pointer; }
+  .switch button:first-child { border-radius:6px 0 0 6px; } .switch button:last-child { border-radius:0 6px 6px 0; border-left:0; }
+  .switch button[aria-pressed="true"] { background:var(--orange); border-color:var(--orange); }
+  .cmd + .cmd { margin-top:8px; }
   .stage { position:relative; }
   #scene { width:100%; height:62vh; min-height:320px; display:block; }
   .overlay { position:absolute; left:12px; right:12px; top:10px; display:flex; justify-content:space-between; align-items:center; gap:8px; pointer-events:none; }
@@ -28,14 +34,18 @@
   .tag.later { color:var(--muted); }
   #card p { line-height:1.5; margin:10px 0; }
   .cmd { display:flex; gap:8px; align-items:center; }
-  .cmd code { flex:1; background:var(--cream); border:1px solid var(--line); padding:10px 12px; border-radius:6px; font-size:15px; overflow-wrap:anywhere; }
+  .cmd code { flex:1; background:var(--cream); border:1px solid var(--line); padding:10px 12px; border-radius:6px; font-size:14px; white-space:nowrap; overflow-x:auto; min-width:0; }
   .cmd button { font:600 14px Inter, sans-serif; background:var(--orange); color:#fff; border:0; border-radius:6px; padding:10px 14px; cursor:pointer; }
   small { color:var(--muted); }
   @media (max-width:480px){ nav { grid-template-columns:repeat(2,1fr); } }
 </style>
 </head>
 <body>
-<header><b>VENTA</b> <span>CONSULTING</span><p>Virtual office · tap a room or a person</p></header>
+<header>
+  <div class="top"><div><b>VENTA</b> <span>CONSULTING</span></div>
+    <div class="switch" role="group" aria-label="Which business"><button data-m="venta">Venta</button><button data-m="rts">RTS</button></div></div>
+  <p id="sub"></p>
+</header>
 <div class="stage">
   <canvas id="scene" aria-hidden="true"></canvas>
   <div class="overlay"><small>Drag to look around · pinch or scroll to zoom</small><button id="overview">Whole office</button></div>
@@ -47,37 +57,59 @@
   "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
   "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
 <script type="module">
-// Agent list mirrors CLAUDE.md. When an agent goes live, set live:true and fill in cmd.
-const AGENTS = [
-  { name:'Chief of Staff', live:true, cmd:'/brief',
-    role:'Morning brief, pipeline tidiness and follow-ups. Reads the pipeline sheet, calendar and Gmail, and tells you what matters today.' },
-  { name:'Sales', live:false, role:'Researches organizations, drafts outreach and preps discovery calls.' },
-  { name:'Operations', live:false, role:'Proposals, agreements and client delivery documents.' },
-  { name:'Marketing', live:false, role:'Video studio, LinkedIn posts and website fixes.' },
-];
+// Two offices in one. Each mode's agents map to the four department rooms, in order.
+// Agent list mirrors CLAUDE.md. When an agent goes live, set live:true and add its commands.
+const OUTREACH_NOTE = 'Paste into Claude Code in the venta-office folder, with Chrome open and signed in. It drafts everything, then waits for you to reply "send all".';
+const MODES = {
+  venta: { sub:'Venta office · nonprofit AI program', agents: [
+    { name:'Chief of Staff', live:true, cmds:['/brief'], note:'Paste this into Claude Code in the venta-office folder. Drafts only; nothing is sent.',
+      role:'Morning brief, pipeline tidiness and follow-ups. Reads the pipeline sheet, calendar and Gmail, and tells you what matters today.' },
+    { name:'Outreach', live:true, cmds:['/outreach venta linkedin'], note:OUTREACH_NOTE,
+      role:'Finds local nonprofit leaders in Williamson County on LinkedIn, drafts connection notes, messages and replies, and offers the free 20-minute AI check.' },
+    { name:'Operations', live:false, role:'Proposals, agreements and client delivery documents.' },
+    { name:'Marketing', live:false, role:'Video studio, LinkedIn posts and website fixes.' } ] },
+  rts: { sub:'RTS office · referral partners', agents: [
+    { name:'Chief of Staff', live:false, role:'Not set up for RTS yet.' },
+    { name:'Partner Outreach', live:true, cmds:['/outreach rts facebook', '/outreach rts linkedin', '/outreach rts youtube', '/outreach rts tiktok'], note:OUTREACH_NOTE + ' One platform per run.',
+      role:'Finds referral partners (dispatchers, trucking insurance agents, compliance services and more), answers messages and comments, follows up, and drafts group posts in English and Spanish.' },
+    { name:'Operations', live:false, role:'Not set up for RTS yet.' },
+    { name:'Marketing', live:false, role:'Not set up for RTS yet.' } ] },
+};
+let mode = 'venta', AGENTS = MODES.venta.agents;
+try { mode = location.hash === '#rts' ? 'rts' : location.hash === '#venta' ? 'venta' : localStorage.getItem('mode') || 'venta'; } catch {}
+if (!MODES[mode]) mode = 'venta';
 
 const tabs = document.getElementById('tabs'), card = document.getElementById('card');
-let show3D = () => {}, overview = () => {};
+let show3D = () => {}, relabel3D = () => {}, overview = () => {};
 
 function select(i, fly = true) {
   const a = AGENTS[i];
   [...tabs.children].forEach((b, j) => b.setAttribute('aria-pressed', j === i));
   card.innerHTML = `<div class="tag ${a.live ? '' : 'later'}">${a.live ? 'Live' : 'Coming soon'}</div>
     <h2>${a.name}</h2><p>${a.role}</p>` + (a.live
-    ? `<div class="cmd"><code>${a.cmd}</code><button id="copy">Copy</button></div>
-       <p><small>Paste this into Claude Code in the venta-office folder. Drafts only; nothing is sent.</small></p>`
+    ? a.cmds.map(c => `<div class="cmd"><code>${c}</code><button>Copy</button></div>`).join('') + `<p><small>${a.note}</small></p>`
     : `<p><small>This agent isn't set up yet.</small></p>`);
-  const c = document.getElementById('copy');
-  if (c) c.onclick = () => navigator.clipboard.writeText(a.cmd).then(() => c.textContent = 'Copied', () => c.textContent = 'Select it');
+  card.querySelectorAll('.cmd button').forEach(b => b.onclick = () =>
+    navigator.clipboard.writeText(b.previousElementSibling.textContent).then(() => b.textContent = 'Copied', () => b.textContent = 'Select it'));
   show3D(i, fly);
 }
-AGENTS.forEach((a, i) => {
-  const b = document.createElement('button');
-  b.textContent = a.name; if (!a.live) b.className = 'later';
-  b.onclick = () => select(i); tabs.append(b);
-});
+function setMode(m) {
+  mode = m; AGENTS = MODES[m].agents;
+  try { localStorage.setItem('mode', m); history.replaceState(null, '', '#' + m); } catch {}
+  document.getElementById('sub').textContent = MODES[m].sub + ' · tap a room or a person';
+  document.querySelectorAll('.switch button').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === m));
+  tabs.innerHTML = '';
+  AGENTS.forEach((a, i) => {
+    const b = document.createElement('button');
+    b.textContent = a.name; if (!a.live) b.className = 'later';
+    b.onclick = () => select(i); tabs.append(b);
+  });
+  relabel3D();
+  select(AGENTS.findIndex(a => a.live), false);
+}
+document.querySelectorAll('.switch button').forEach(b => b.onclick = () => setMode(b.dataset.m));
 document.getElementById('overview').onclick = () => overview();
-select(0); // the cards work even if the 3D below fails to load
+setMode(mode); // the cards work even if the 3D below fails to load
 
 // ---------- 3D office ----------
 const THREE = await import('three');
@@ -152,15 +184,15 @@ const screenOn = canvasTex(256, 150, (x) => {
   x.fillStyle = '#F58A4B'; [40, 70, 55, 90, 75].forEach((h, i) => x.fillRect(150 + i * 19, 135 - h, 12, h));
 });
 const screenOff = canvasTex(64, 40, (x) => { const g = x.createLinearGradient(0, 0, 64, 40); g.addColorStop(0, '#1d2230'); g.addColorStop(1, '#0b0d12'); x.fillStyle = g; x.fillRect(0, 0, 64, 40); });
-function label(p, x, z, name, status, live) {
-  const t = canvasTex(600, 170, (c, w, h) => {
+const labelTex = (name, status, live) => canvasTex(600, 170, (c, w, h) => {
     c.fillStyle = 'rgba(19,40,78,.94)'; c.beginPath(); c.roundRect(4, 4, w - 8, h - 8, 28); c.fill();
     if (live) { c.fillStyle = '#F26B21'; c.fillRect(40, h - 14, w - 80, 6); }
     c.textAlign = 'center'; c.fillStyle = '#fff'; c.font = '700 54px Inter'; c.fillText(name, w / 2, status ? 80 : 104);
     if (status) { c.font = '600 34px Inter'; c.fillStyle = live ? '#F58A4B' : '#b9c2d3'; c.fillText(status, w / 2, 130); }
-  });
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map:t, depthTest:false }));
-  s.position.set(x, 3.7, z); s.scale.set(3.2, .9, 1); s.renderOrder = 10; p.add(s);
+});
+function label(p, x, z, tex) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, depthTest:false }));
+  s.position.set(x, 3.7, z); s.scale.set(3.2, .9, 1); s.renderOrder = 10; p.add(s); return s;
 }
 
 // --- furniture ---
@@ -200,15 +232,15 @@ function station(p, x, z, o, live) { // desk + chair + person, facing -z
   B(g, 1.5, .3, .02, METAL, 0, .55, -1.06);
   B(g, .22, .015, .16, METAL, 0, .768, -.95); B(g, .04, .3, .03, METAL, 0, .92, -.97);
   B(g, .66, .4, .03, '#18191c', 0, 1.17, -.95);
-  mesh(g, new THREE.PlaneGeometry(.62, .36), new THREE.MeshBasicMaterial({ map: live ? screenOn : screenOff }), 0, 1.17, -.934);
+  const screen = mesh(g, new THREE.PlaneGeometry(.62, .36), new THREE.MeshBasicMaterial({ map: screenOff }), 0, 1.17, -.934);
   B(g, .44, .02, .14, '#e9e9ea', 0, .77, -.44); B(g, .06, .02, .1, '#e9e9ea', .32, .77, -.44);
-  C(g, .04, .04, .1, live ? '#F26B21' : '#ffffff', -.55, .81, -.55);
+  C(g, .04, .04, .1, '#F26B21', -.55, .81, -.55);
   B(g, .2, .015, .28, '#13284E', .55, .768, -.62);
   C(g, .06, .05, .1, '#ffffff', -.62, .81, -.95); S(g, .09, leafMat, -.62, .92, -.95);
   chair(g, 0, .05);
   const ring = mesh(g, new THREE.RingGeometry(.9, 1.0, 48), new THREE.MeshBasicMaterial({ color:'#F26B21', transparent:true }), 0, .02, -.35);
   ring.rotation.x = -Math.PI / 2; ring.visible = false;
-  return { ring, head: person(g, o), live };
+  return { ring, screen, head: person(g, o), live:false };
 }
 function plant(p, x, z, s = 1) {
   const g = G(p, x, z); g.scale.setScalar(s);
@@ -277,8 +309,8 @@ for (const r of ROOMS) {
   r.g = G(scene); r.g.userData.room = r;
   const f = B(r.g, 2 * RX, .02, rd, new THREE.MeshStandardMaterial({ map: floorTex(r.floor || '#d8bf98', r.floor === '#4a5266' ? 'noise' : 'planks', 2 * RX, rd), roughness:.7 }), r.cx, .005, r.cz);
   f.castShadow = false;
-  const a = AGENTS[r.agent];
-  label(r.g, r.cx, r.cz, r.name, a && (a.live ? 'Live · ' + a.cmd : 'Coming soon'), a?.live);
+  if (r.agent === undefined) label(r.g, r.cx, r.cz, labelTex(r.name));
+  else r.sprite = label(r.g, r.cx, r.cz, screenOff); // texture set by relabel3D
 }
 const [cos, sales, ops, mkt, conf, lounge] = ROOMS.map(r => r.g);
 const nz = -(D + CZ) / 2, sz = (D + CZ) / 2;
@@ -352,7 +384,15 @@ show3D = (i, go) => {
   stations.forEach((s, j) => s.ring.visible = i === j);
   const r = ROOMS.find(r => r.agent === i); if (go) { moved = true; flyTo(r.cx, r.cz); }
 };
-show3D(0, false);
+relabel3D = () => ROOMS.forEach(r => {
+  if (r.agent === undefined) return;
+  const a = AGENTS[r.agent], s = stations[r.agent];
+  const st = !a.live ? 'Coming soon' : a.cmds.length > 1 ? `Live · ${a.cmds.length} platforms` : 'Live · ' + a.cmds[0];
+  if (r.sprite.material.map !== screenOff) r.sprite.material.map.dispose();
+  r.sprite.material.map = labelTex(a.name, st, a.live);
+  s.screen.material.map = a.live ? screenOn : screenOff; s.live = a.live;
+});
+relabel3D(); show3D(AGENTS.findIndex(a => a.live), false);
 
 function resize() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
