@@ -67,14 +67,16 @@ const MODES = {
       role:'Morning brief, pipeline tidiness and follow-ups. Reads the pipeline sheet, calendar and Gmail, and tells you what matters today.' },
     { who:'Sergio', name:'Sales', live:true, cmds:['/sergio venta'], note:OUTREACH_NOTE,
       role:'Finds local nonprofit leaders in Williamson County on LinkedIn, drafts connection notes, messages and replies, and offers the free 20-minute AI check.' },
-    { who:'Olga', name:'Operations', live:false, role:'Discovery call prep, proposals, agreements and client delivery documents.' },
+    { who:'Olga', name:'Operations', live:true, cmds:['/olga'], note:'Paste into Claude Code in the venta-office folder. Best after each Sergio run or on Fridays. Your private dashboard link is in her summary.',
+      role:'Learns what works from every run and your feedback, keeps your private dashboard current, tidies the Venta pipeline sheet and preps your discovery calls.' },
     { who:'María', name:'Marketing', live:true, cmds:['/maria venta'], note:MARKETING_NOTE,
       role:'LinkedIn posts for local nonprofit leaders, talk outlines and brand checks, using your Venta Google Drive folder.' } ] },
   rts: { sub:'RTS office · referral partners', agents: [
     { who:'Jefe', name:'Chief of Staff', live:false, role:'Not set up for RTS yet.' },
     { who:'Sergio', name:'Partner Outreach', live:true, cmds:['/sergio', '/sergio linkedin', '/sergio youtube', '/sergio tiktok'], note:OUTREACH_NOTE + ' Plain /sergio is the full Facebook routine: every DM, every unanswered comment, follow-ups, up to 10 group posts and 15 comments.',
       role:'Finds referral partners (dispatchers, trucking insurance agents, compliance services and more), answers messages and comments, follows up, and drafts group posts in English and Spanish.' },
-    { who:'Olga', name:'Operations', live:false, role:'Not set up for RTS yet.' },
+    { who:'Olga', name:'Operations', live:true, cmds:['/olga learn'], note:'Paste into Claude Code in the venta-office folder. RTS stays top of the funnel; Salesforce handles the rest.',
+      role:'Studies Sergio\'s RTS runs and your feedback: which groups, posts and wording get replies, and how to raise response rates and partner quality.' },
     { who:'María', name:'Marketing', live:true, cmds:['/maria', '/maria video script for TikTok'], note:MARKETING_NOTE,
       role:'Group posts for Sergio, flyer copy and short video scripts in English and Spanish, using your RTS Financial — Marketing Drive folder.' } ] },
 };
